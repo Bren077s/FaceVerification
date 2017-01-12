@@ -1,4 +1,14 @@
-# Stacked LSTM for international airline passengers problem with memory
+import argparse
+
+parser = argparse.ArgumentParser()
+parser.add_argument("-t", "--train", help="Train the lstm network", action="store_true")
+parser.add_argument("-e", "--epochs", help="The number of training epoches", type=int, default=100)
+parser.add_argument("-d", "--data", help="The input dataset for training or testing", default="data/goog_open_raw.csv")
+parser.add_argument("-m", "--model", help="The model location(save and load)", default="model.json")
+parser.add_argument("-w", "--weights", help="The weight file for the model(save and load)", default="weights.hdf5")
+parser.add_argument("-f", "--future", help="The number of future predictions", type=int, default=300)
+args = parser.parse_args()
+
 import numpy
 import pandas
 import math
@@ -8,18 +18,6 @@ from keras.models import model_from_json, Sequential
 from keras.optimizers import Adam
 from sklearn.metrics import mean_squared_error
 from sklearn.preprocessing import MinMaxScaler
-
-import argparse
-parser = argparse.ArgumentParser()
-
-parser.add_argument("-t", "--train", help="Train the lstm network", action="store_true")
-parser.add_argument("-e", "--epoch", help="The number of training epoches", type=int, default=100)
-parser.add_argument("-d", "--data", help="The input dataset for training or testing", default="data/goog_open_raw.csv")
-parser.add_argument("-m", "--model", help="The model location(save and load)", default="model.json")
-parser.add_argument("-w", "--weights", help="The weight file for the model(save and load)", default="weights.hdf5")
-parser.add_argument("-f", "--future", help="The number of future predictions", type=int, default=300)
-
-args = parser.parse_args()
 
 class ModelReset(Callback):
 	def on_epoch_end(self, epoch, logs={}):
@@ -65,7 +63,7 @@ if(args.train):
 	model.add(Dense(1))
 	model.add(Activation('linear'))
 	learning_rate = 0.0001
-	decay_rate = learning_rate / args.epoch
+	decay_rate = learning_rate / args.epochs
 	adam = Adam(lr=learning_rate, beta_1=0.9, beta_2=0.999, epsilon=1e-08, decay=decay_rate)
 	model.compile(loss='mean_squared_error', optimizer=adam)
 	reset = ModelReset()
@@ -77,7 +75,7 @@ if(args.train):
 	with open(args.model, "w") as json_file:
 		json_file.write(model_json)
 	
-	model.fit(trainX, trainY, nb_epoch=epochs, batch_size=batch_size, shuffle=False,callbacks=[reset, checkpoint])
+	model.fit(trainX, trainY, nb_epoch=args.epochs, batch_size=batch_size, shuffle=False,callbacks=[reset, checkpoint])
 
 	# serialize weights to HDF5
 	model.save_weights(args.weights)
@@ -124,10 +122,10 @@ else:
 	futurePredict = scaler.inverse_transform(futurePredict)
 	
 	# calculate root mean squared error
-	trainScore = mean_squared_error(trainY[0], trainPredict[:,0])
-	print('Train Score: %.2f MSE' % (trainScore))
-	testScore = mean_squared_error(testY[0], testPredict[:,0])
-	print('Test Score: %.2f MSE' % (testScore))
+	trainScore = math.sqrt(mean_squared_error(trainY[0], trainPredict[:,0]))
+	print('Train Score: %.2f RMSE' % (trainScore))
+	testScore = math.sqrt(mean_squared_error(testY[0], testPredict[:,0]))
+	print('Test Score: %.2f RMSE' % (testScore))
 	# shift train predictions for plotting
 	trainPredictPlot = numpy.empty([dataset.shape[0]+futurePredict.shape[0], dataset.shape[1]])
 	trainPredictPlot[:, :] = numpy.nan

@@ -41,7 +41,7 @@ def create_dataset(dataset, look_back=1):
 # fix random seed for reproducibility
 numpy.random.seed(7)
 # load the dataset
-dataframe = pandas.read_csv('goog_open_raw.csv', usecols=[0], engine='python', skipfooter=3)
+dataframe = pandas.read_csv('data/goog_open_raw.csv', usecols=[0], engine='python', skipfooter=3)
 dataset = dataframe.values
 dataset = dataset.astype('float32')
 # normalize the dataset
@@ -122,11 +122,11 @@ else:
 	trainY = numpy.reshape(trainY, (1, trainY.shape[0]))
 	testY = numpy.reshape(testY, (1, testY.shape[0]))
 	# invert predictions
-	#trainPredict = scaler.inverse_transform(trainPredict)
-	#trainY = scaler.inverse_transform(trainY)
-	#testPredict = scaler.inverse_transform(testPredict)
-	#testY = scaler.inverse_transform(testY)
-	#futurePredict = scaler.inverse_transform(futurePredict)
+	trainPredict = scaler.inverse_transform(trainPredict)
+	trainY = scaler.inverse_transform(trainY)
+	testPredict = scaler.inverse_transform(testPredict)
+	testY = scaler.inverse_transform(testY)
+	futurePredict = scaler.inverse_transform(futurePredict)
 	
 	# calculate root mean squared error
 	trainScore = mean_squared_error(trainY[0], trainPredict[:,0])

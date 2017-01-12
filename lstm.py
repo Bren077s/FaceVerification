@@ -2,7 +2,7 @@ import argparse
 
 parser = argparse.ArgumentParser()
 parser.add_argument("-t", "--train", help="Train the lstm network", action="store_true")
-parser.add_argument("-e", "--epochs", help="The number of training epoches", type=int, default=100)
+parser.add_argument("-e", "--epochs", help="The number of training epoches", type=int, default=1000)
 parser.add_argument("-d", "--data", help="The input dataset for training or testing", default="data/goog_open_raw.csv")
 parser.add_argument("-m", "--model", help="The model location(save and load)", default="model.json")
 parser.add_argument("-w", "--weights", help="The weight file for the model(save and load)", default="weights.hdf5")
@@ -62,7 +62,7 @@ if(args.train):
 	model.add(LSTM(256,batch_input_shape=(batch_size, look_back, 1), stateful=True))
 	model.add(Dense(1))
 	model.add(Activation('linear'))
-	learning_rate = 0.0001
+	learning_rate = 0.00003
 	decay_rate = learning_rate / args.epochs
 	adam = Adam(lr=learning_rate, beta_1=0.9, beta_2=0.999, epsilon=1e-08, decay=decay_rate)
 	model.compile(loss='mean_squared_error', optimizer=adam)

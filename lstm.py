@@ -2,34 +2,29 @@
 import numpy
 import pandas
 import math
-from keras.callbacks import Callback
+from keras.callbacks import Callback, ModelCheckpoint
+from keras.layers import Activation, Dense, Dropout, LSTM
+from keras.models import model_from_json, Sequential
 from keras.optimizers import Adam
-from keras.models import Sequential
-from keras.models import model_from_json
-from keras.layers import Activation
-from keras.layers import Dense
-from keras.layers import LSTM
-from keras.layers import Dropout
-from sklearn.preprocessing import MinMaxScaler
 from sklearn.metrics import mean_squared_error
-from keras.callbacks import ModelCheckpoint
-from keras.layers.wrappers import Bidirectional
-import sys
+from sklearn.preprocessing import MinMaxScaler
 
-fit = "false"
-modfile = "model.json"
-weightfile = "weights.hdf5"
-if(len(sys.argv) >= 2):
-	if(sys.argv[1] == "true"):
-		fit = "true"
-	else:
-		modfile = sys.argv[1]
-if(len(sys.argv) >= 3):
-	weightfile = sys.argv[2]
+import argparse
+parser = argparse.ArgumentParser()
+
+parser.add_argument("-t", "--train", help="Train the lstm network", action="store_true")
+parser.add_argument("-e", "--epoch", help="The number of training epoches", type=int, default=100)
+parser.add_argument("-d", "--data", help="The input dataset for training or testing", default="data/goog_open_raw.csv")
+parser.add_argument("-m", "--model", help="The model location(save and load)", default="model.json")
+parser.add_argument("-w", "--weights", help="The weight file for the model(save and load)", default="weights.hdf5")
+parser.add_argument("-f", "--future", help="The number of future predictions", type=int, default=300)
+
+args = parser.parse_args()
 
 class ModelReset(Callback):
 	def on_epoch_end(self, epoch, logs={}):
 		self.model.reset_states()
+
 # convert an array of values into a dataset matrix
 def create_dataset(dataset, look_back=1):
 	dataX, dataY = [], []
@@ -38,10 +33,11 @@ def create_dataset(dataset, look_back=1):
 		dataX.append(a)
 		dataY.append(dataset[i + look_back, 0])
 	return numpy.array(dataX), numpy.array(dataY)
+
 # fix random seed for reproducibility
 numpy.random.seed(7)
 # load the dataset
-dataframe = pandas.read_csv('data/goog_open_raw.csv', usecols=[0], engine='python', skipfooter=3)
+dataframe = pandas.read_csv(args.data, usecols=[0], engine='python', skipfooter=3)
 dataset = dataframe.values
 dataset = dataset.astype('float32')
 # normalize the dataset
@@ -61,7 +57,7 @@ trainX = numpy.reshape(trainX, (trainX.shape[0], trainX.shape[1], 1))
 testX = numpy.reshape(testX, (testX.shape[0], testX.shape[1], 1))
 
 
-if(fit == "true"):
+if(args.train):
 	# create and fit the LSTM network
 	model = Sequential()
 	#model.add(LSTM(256, batch_input_shape=(batch_size, look_back, 1), return_sequences=True, stateful=True))
@@ -69,8 +65,7 @@ if(fit == "true"):
 	model.add(Dense(1))
 	model.add(Activation('linear'))
 	learning_rate = 0.0001
-	epochs = 1000
-	decay_rate = learning_rate / epochs
+	decay_rate = learning_rate / args.epoch
 	adam = Adam(lr=learning_rate, beta_1=0.9, beta_2=0.999, epsilon=1e-08, decay=decay_rate)
 	model.compile(loss='mean_squared_error', optimizer=adam)
 	reset = ModelReset()
@@ -79,24 +74,24 @@ if(fit == "true"):
 	
 	# serialize model to JSON
 	model_json = model.to_json()
-	with open("model.json", "w") as json_file:
+	with open(args.model, "w") as json_file:
 		json_file.write(model_json)
 	
 	model.fit(trainX, trainY, nb_epoch=epochs, batch_size=batch_size, shuffle=False,callbacks=[reset, checkpoint])
 
 	# serialize weights to HDF5
-	model.save_weights("model.hdf5")
+	model.save_weights(args.weights)
 	print("Saved model to disk")
 else:
 	# later...
 	 
 	# load json and create model
-	json_file = open('{0}'.format(modfile), 'r')
+	json_file = open(args.model, 'r')
 	model_json = json_file.read()
 	json_file.close()
 	model = model_from_json(model_json)
 	# load weights into new model
-	model.load_weights("{0}".format(weightfile))
+	model.load_weights(args.weights)
 	print("Loaded model from disk")
 
 
@@ -147,7 +142,7 @@ else:
 	futurePredictPlot[len(dataset):len(dataset)+futurePredict.shape[0], :] = futurePredict
 	# plot baseline and predictions
 	import matplotlib.pyplot as plt
-	plt.plot(dataset)
+	plt.plot(scaler.inverse_transform(dataset))
 	plt.plot(trainPredictPlot)
 	plt.plot(testPredictPlot)
 	plt.plot(futurePredictPlot)

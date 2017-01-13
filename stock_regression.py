@@ -2,6 +2,7 @@ import argparse
 
 parser = argparse.ArgumentParser()
 parser.add_argument("-t", "--train", help="Train the lstm network", action="store_true")
+parser.add_argument("-s", "--scale", help="Disables the scaler if set", action="store_true")
 parser.add_argument("-e", "--epochs", help="The number of training epoches", type=int, default=1000)
 parser.add_argument("-d", "--data", help="The input dataset for training or testing", default="data/goog_open_raw.csv")
 parser.add_argument("-m", "--model", help="The model location(save and load)", default="model.json")
@@ -12,10 +13,9 @@ args = parser.parse_args()
 import numpy
 import pandas
 import math
-from keras.callbacks import Callback, ModelCheckpoint
+from keras.callbacks import Callback, ModelCheckpoint, ReduceLROnPlateau
 from keras.layers import Activation, Dense, Dropout, LSTM
 from keras.models import model_from_json, Sequential
-from keras.optimizers import Adam
 from sklearn.metrics import mean_squared_error
 from sklearn.preprocessing import MinMaxScaler
 
@@ -39,7 +39,7 @@ dataframe = pandas.read_csv(args.data, usecols=[0], engine='python', skipfooter=
 dataset = dataframe.values
 dataset = dataset.astype('float32')
 # normalize the dataset
-scaler = MinMaxScaler(feature_range=(0, 1))
+scaler = MinMaxScaler(feature_range=(-1, 1))
 dataset = scaler.fit_transform(dataset)
 # split into train and test sets
 train_size = int(len(dataset) * 0.8)
@@ -62,20 +62,18 @@ if(args.train):
 	model.add(LSTM(256,batch_input_shape=(batch_size, look_back, 1), stateful=True))
 	model.add(Dense(1))
 	model.add(Activation('linear'))
-	learning_rate = 0.00003
-	decay_rate = learning_rate / args.epochs
-	adam = Adam(lr=learning_rate, beta_1=0.9, beta_2=0.999, epsilon=1e-08, decay=decay_rate)
-	model.compile(loss='mean_squared_error', optimizer=adam)
+	model.compile(loss='mean_squared_error', optimizer="Adam")
 	reset = ModelReset()
 	filepath="weights-improvement-{loss}-{epoch:03d}.hdf5"
-	checkpoint = ModelCheckpoint(filepath, monitor='loss', save_best_only=True, mode='min')
+	checkpoint = ModelCheckpoint(filepath, monitor='loss', save_best_only=True, mode='min', verbose=1)
+	reduce_lr = ReduceLROnPlateau(monitor='loss', factor=1.0/3.0, patience=10, epsilon=0, verbose=1)
 	
 	# serialize model to JSON
 	model_json = model.to_json()
 	with open(args.model, "w") as json_file:
 		json_file.write(model_json)
 	
-	model.fit(trainX, trainY, nb_epoch=args.epochs, batch_size=batch_size, shuffle=False,callbacks=[reset, checkpoint])
+	model.fit(trainX, trainY, nb_epoch=args.epochs, batch_size=batch_size, shuffle=False,callbacks=[reset, checkpoint, reduce_lr], verbose=2)
 
 	# serialize weights to HDF5
 	model.save_weights(args.weights)
@@ -115,11 +113,13 @@ else:
 	trainY = numpy.reshape(trainY, (1, trainY.shape[0]))
 	testY = numpy.reshape(testY, (1, testY.shape[0]))
 	# invert predictions
-	trainPredict = scaler.inverse_transform(trainPredict)
-	trainY = scaler.inverse_transform(trainY)
-	testPredict = scaler.inverse_transform(testPredict)
-	testY = scaler.inverse_transform(testY)
-	futurePredict = scaler.inverse_transform(futurePredict)
+	if not args.scale:
+		trainPredict = scaler.inverse_transform(trainPredict)
+		trainY = scaler.inverse_transform(trainY)
+		testPredict = scaler.inverse_transform(testPredict)
+		testY = scaler.inverse_transform(testY)
+		futurePredict = scaler.inverse_transform(futurePredict)
+		dataset = scaler.inverse_transform(dataset)
 	
 	# calculate root mean squared error
 	trainScore = math.sqrt(mean_squared_error(trainY[0], trainPredict[:,0]))
@@ -140,7 +140,7 @@ else:
 	futurePredictPlot[len(dataset):len(dataset)+futurePredict.shape[0], :] = futurePredict
 	# plot baseline and predictions
 	import matplotlib.pyplot as plt
-	plt.plot(scaler.inverse_transform(dataset))
+	plt.plot(dataset)
 	plt.plot(trainPredictPlot)
 	plt.plot(testPredictPlot)
 	plt.plot(futurePredictPlot)

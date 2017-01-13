@@ -104,8 +104,8 @@ else:
 		futurePredict = model.predict(data, batch_size=batch_size)
 		output.append(futurePredict[0,0])
 		#print(data)
-		data[0,:-1] = data[0,-49:]
-		data[0,49] = output[i]
+		data[0,:-1] = data[0,-1:]
+		data[0,-1] = output[i]
 	futurePredict = numpy.array(output)
 	futurePredict = numpy.reshape(futurePredict, (futurePredict.shape[0],1))
 	trainY = numpy.array(trainY)

@@ -7,4 +7,6 @@
 /megafaceX.npy
 /megafaceY.npy
 /base_model/*.hdf5
+!/base_model/weights-improvement-best.hdf5
 /more_data_model/*.hdf5
+!/more_data_model/weights-improvement-best.hdf5

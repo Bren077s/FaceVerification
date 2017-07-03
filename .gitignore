@@ -1,0 +1,10 @@
+/MegafaceIdentities_VGG
+/identities_tight_cropped.tar.gz
+/lfw_test_pairs.npy
+/lfw_test_target.npy
+/lfw_train_pairs.npy
+/lfw_train_target.npy
+/megafaceX.npy
+/megafaceY.npy
+/base_model/*.hdf5
+/more_data_model/*.hdf5

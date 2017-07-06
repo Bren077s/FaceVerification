@@ -1,3 +1,4 @@
+/.ipynb_checkpoints
 /MegafaceIdentities_VGG
 /identities_tight_cropped.tar.gz
 /lfw_test_pairs.npy
